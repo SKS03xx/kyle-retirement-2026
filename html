@@ -1,0 +1,64 @@
+/**
+ * Sends you an email for every new RSVP and (optionally) auto-replies to the guest.
+ * Works with any Google Form linked to this Sheet (uses header names to map fields).
+ */
+function onFormSubmit(e) {
+  // Grab the submitted row + headers
+  var sheet   = e.range.getSheet();
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var values  = e.values; // array for the new row
+  var data    = {};
+  headers.forEach(function(h, i){ data[h] = values[i]; });
+
+  // ---- CONFIG: update these ----
+  var HOST_EMAIL = "steven.k.sugg@gmail.com"; // you
+  var HOST_NAME  = "Kyle Sugg RSVPs";
+  var EVENT_NAME = "Kyle’s Retirement – Apr 24, 2026 @ 10:00 AM (ET)";
+  var VENUE      = "Marston Pavilion, 730 Seth Williams Blvd, Camp Lejeune, NC 28547";
+  var NOTES      = "Base access: Real ID required; civilians may need a pass.";
+
+  // Try common column titles; adjust to match your Form if needed
+  var guestName  = data["Name"] || data["Full Name"] || data["Your name"] || "";
+  var guestEmail = data["Email"] || data["Your email"] || data["E-mail"] || "";
+  var partySize  = data["Party Size"] || data["How many attending?"] || data["Guests"] || "";
+  var note       = data["Notes"] || data["Message"] || data["Any notes, dietary needs, or base access questions"] || "";
+
+  // Build host notification
+  var subjectHost = "New RSVP: " + (guestName || "Guest");
+  var bodyHost =
+    "New RSVP received\n\n" +
+    "Event: " + EVENT_NAME + "\n" +
+    "Venue: " + VENUE + "\n\n" +
+    "Name: " + guestName + "\n" +
+    "Email: " + guestEmail + "\n" +
+    "Party Size: " + partySize + "\n" +
+    "Notes: " + note + "\n\n" +
+    "Timestamp: " + (data["Timestamp"] || new Date());
+
+  // Send to host
+  MailApp.sendEmail({
+    to: HOST_EMAIL,
+    subject: subjectHost,
+    htmlBody: bodyHost.replace(/\n/g, "<br>"),
+    name: HOST_NAME,
+    replyTo: guestEmail || HOST_EMAIL
+  });
+
+  // Optional: send guest a confirmation email if we captured their address
+  if (guestEmail) {
+    var subjectGuest = "RSVP Confirmed – " + EVENT_NAME;
+    var htmlGuest =
+      "<p>Thanks for RSVPing, " + (guestName || "there") + "!</p>" +
+      "<p><strong>When:</strong> Friday, April 24, 2026 at 10:00 AM (ET)<br>" +
+      "<strong>Where:</strong> " + VENUE + "</p>" +
+      "<p>" + NOTES + "</p>" +
+      "<p>We’ll share any updates as we get closer. – Kyle</p>";
+
+    MailApp.sendEmail({
+      to: guestEmail,
+      subject: subjectGuest,
+      htmlBody: htmlGuest,
+      name: "Kyle Sugg"
+    });
+  }
+}
